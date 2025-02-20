@@ -27,25 +27,55 @@ function createWindow() {
 // 获取Python路径
 function getPythonPath() {
   const getPackagedPath = () => {
+    // 在打包环境中，Python 应该在 resources 目录下
     const basePath = path.join(process.resourcesPath, 'app.asar.unpacked', 'python', 'venv')
-    if (process.platform === 'darwin') {
-      return path.join(basePath, 'bin', 'python')
-    } else {
-      return path.join(basePath, 'Scripts', 'python.exe')
+    const pythonPath = process.platform === 'win32'
+      ? path.join(basePath, 'Scripts', 'python.exe')
+      : path.join(basePath, 'bin', 'python')
+    
+    // 检查文件是否存在并输出详细信息
+    console.log('Checking Python path:', pythonPath)
+    console.log('Process resources path:', process.resourcesPath)
+    console.log('Base path:', basePath)
+    console.log('Path exists:', fs.existsSync(pythonPath))
+    
+    try {
+      // 尝试获取目录内容
+      if (fs.existsSync(basePath)) {
+        console.log('Directory contents:', fs.readdirSync(basePath))
+        if (process.platform === 'win32' && fs.existsSync(path.join(basePath, 'Scripts'))) {
+          console.log('Scripts directory contents:', fs.readdirSync(path.join(basePath, 'Scripts')))
+        }
+      }
+    } catch (err) {
+      console.error('Error reading directory:', err)
     }
+
+    if (!fs.existsSync(pythonPath)) {
+      console.error('Python path not found:', pythonPath)
+      throw new Error(`Python not found at ${pythonPath}`)
+    }
+
+    // 确保返回的路径不包含特殊字符
+    return pythonPath.split('(')[0].trim()  // 移除括号及其后面的内容
   }
 
   const getDevPath = () => {
     const basePath = path.join(__dirname, '..', 'python', 'venv')
-    if (process.platform === 'win32') {
-      return path.join(basePath, 'Scripts', 'python.exe')
-    } else {
-      return path.join(basePath, 'bin', 'python')
-    }
+    const pythonPath = process.platform === 'win32'
+      ? path.join(basePath, 'Scripts', 'python.exe')
+      : path.join(basePath, 'bin', 'python')
+    return pythonPath
   }
 
-  const pythonPath = app.isPackaged ? getPackagedPath() : getDevPath()
-  return pythonPath.replace(/\\/g, '/') // 统一使用正斜杠
+  // 获取并规范化路径，确保没有特殊字符
+  const pythonPath = (app.isPackaged ? getPackagedPath() : getDevPath())
+    .replace(/\\/g, '/')
+    .replace(/\.\.\./g, '')  // 移除省略号
+    .replace(/\([^)]*\)/g, '')  // 移除括号及其内容
+
+  console.log('Final Python path:', pythonPath)
+  return pythonPath
 }
 
 // 保存文本文件
@@ -66,25 +96,31 @@ async function saveTranscription(audioPath, segments) {
 ipcMain.handle('transcribe-audio', async (event, audioPath) => {
   return new Promise((resolve, reject) => {
     const getScriptPath = () => {
-      const basePath = app.isPackaged 
-        ? path.join(process.resourcesPath, 'app.asar.unpacked', 'python')
-        : path.join(__dirname, '..', 'python')
-      return basePath.replace(/\\/g, '/')
+      const scriptPath = app.isPackaged 
+        ? path.join(process.resourcesPath, 'app.asar.unpacked', 'python', 'script.py')
+        : path.join(__dirname, '..', 'python', 'script.py')
+      
+      // 检查脚本是否存在
+      if (!fs.existsSync(scriptPath)) {
+        console.error('Script not found:', scriptPath)
+        throw new Error(`Script not found at ${scriptPath}`)
+      }
+      return scriptPath.replace(/\\/g, '/')
     }
 
     let options = {
       mode: 'text',
       pythonPath: getPythonPath(),
       pythonOptions: ['-u'],
-      scriptPath: getScriptPath(),
-      args: [audioPath.replace(/\\/g, '/')], // 确保音频路径也使用正斜杠
+      scriptPath: path.dirname(getScriptPath()),
+      args: [audioPath.replace(/\\/g, '/')],
       env: {
         ...process.env,
         MODEL_ROOT: path.join(os.homedir(), '.milochy', 'models').replace(/\\/g, '/')
       }
     }
 
-    console.log('Python options:', JSON.stringify(options, null, 2)) // 添加调试日志
+    console.log('Python options:', JSON.stringify(options, null, 2))
 
     let allResults = [];
     const pyshell = new PythonShell('script.py', options);
