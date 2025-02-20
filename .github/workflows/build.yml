@@ -46,8 +46,8 @@ jobs:
           # 复制 Python 脚本到虚拟环境
           copy python\script.py python\venv\Scripts\
           # 下载模型文件
-          mkdir -p models\medium
-          python -c "from huggingface_hub import hf_hub_download; [hf_hub_download('guillaumekln/faster-whisper-medium', f, local_dir='models/medium') for f in ['config.json', 'model.bin', 'tokenizer.json', 'vocabulary.txt']]"
+          mkdir models\medium
+          python\venv\Scripts\python -c "from huggingface_hub import hf_hub_download; [hf_hub_download('guillaumekln/faster-whisper-medium', f, local_dir='models/medium') for f in ['config.json', 'model.bin', 'tokenizer.json', 'vocabulary.txt']]"
           
       - name: Install Python dependencies (macOS)
         if: matrix.os == 'macos-latest'
