@@ -13,8 +13,12 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    }
+    },
+    autoHideMenuBar: true,
+    menuBarVisible: false
   })
+
+  mainWindow.setMenu(null)
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'))
 }
