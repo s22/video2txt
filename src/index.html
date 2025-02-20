@@ -192,7 +192,7 @@
         }
 
         .segment span {
-            color: var(--primary-color);
+            color: var(--accent-color);
             font-size: 0.9em;
         }
 
@@ -225,11 +225,7 @@
                 <div class="upload-icon">📤</div>
                 <p>点击或拖放文件到这里</p>
                 <p class="sub-text">支持视频和音频文件</p>
-                <input type="file" 
-                    id="audioFile" 
-                    accept=".mp3,.wav,.mp4,.avi,.mov,.m4a,.aac,.ogg,.webm,.mkv,audio/*,video/*" 
-                    multiple 
-                    style="display: none;">
+                <input type="file" id="audioFile" accept="audio/*,video/*" multiple style="display: none;">
             </div>
         </div>
         
@@ -269,7 +265,6 @@
             dropZone.classList.remove('drag-over');
             
             const files = Array.from(e.dataTransfer.files).filter(file => {
-                // 检查文件扩展名
                 const ext = file.name.toLowerCase().split('.').pop();
                 const validExtensions = ['mp3', 'wav', 'mp4', 'avi', 'mov', 'm4a', 'aac', 'ogg', 'webm', 'mkv'];
                 return validExtensions.includes(ext);
