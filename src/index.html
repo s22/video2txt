@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Milochy视频文案提取</title>
+    <style>
+        :root {
+            --primary-color: #2d3436;
+            --primary-light: #636e72;
+            --accent-color: #0984e3;
+            --success-color: #00b894;
+            --error-color: #d63031;
+            --background-color: #f5f7fa;
+            --card-background: #ffffff;
+            --border-radius: 12px;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            letter-spacing: -0.5px;
+        }
+
+        .card {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #dfe6e9;
+            border-radius: var(--border-radius);
+            padding: 40px 20px;
+            text-align: center;
+            background: #ffffff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-drop-zone:hover {
+            border-color: var(--accent-color);
+            background: #f8f9fa;
+        }
+
+        .file-drop-zone.drag-over {
+            border-color: var(--accent-color);
+            background: #e3f2fd;
+        }
+
+        .file-drop-zone input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: var(--accent-color);
+            margin-bottom: 15px;
+        }
+
+        .file-drop-zone p {
+            margin: 5px 0;
+            color: var(--primary-color);
+        }
+
+        .file-drop-zone .sub-text {
+            font-size: 0.9em;
+            color: var(--primary-light);
+        }
+
+        .queue-container {
+            margin-top: 30px;
+        }
+
+        .queue-container h3 {
+            color: #34495e;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #ffffff;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .queue-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .queue-item .file-name {
+            flex: 1;
+            font-weight: 500;
+            margin-right: 15px;
+        }
+
+        .queue-item .status-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 200px;
+        }
+
+        .queue-item .status {
+            color: #7f8c8d;
+        }
+
+        .queue-item.done {
+            background: #f8fffa;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .queue-item.error {
+            background: #fff8f8;
+            border-left: 4px solid var(--error-color);
+        }
+
+        .open-file {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: var(--accent-color);
+            color: white;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .open-file:hover {
+            background: #0773c5;
+            transform: translateY(-1px);
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .results h3 {
+            color: #34495e;
+            padding: 10px 0;
+            border-bottom: 2px solid #eee;
+        }
+
+        .segment {
+            padding: 15px;
+            margin: 10px 0;
+            background: #ffffff;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .segment.new {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .segment span {
+            color: var(--primary-color);
+            font-size: 0.9em;
+        }
+
+        .segment p {
+            margin: 10px 0 0;
+            line-height: 1.6;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar .progress {
+            height: 100%;
+            background: var(--accent-color);
+            width: 0;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Milochy视频文案提取</h1>
+        <div class="card">
+            <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('audioFile').click()">
+                <div class="upload-icon">📤</div>
+                <p>点击或拖放文件到这里</p>
+                <p class="sub-text">支持视频和音频文件</p>
+                <input type="file" 
+                    id="audioFile" 
+                    accept=".mp3,.wav,.mp4,.avi,.mov,.m4a,.aac,.ogg,.webm,.mkv,audio/*,video/*" 
+                    multiple 
+                    style="display: none;">
+            </div>
+        </div>
+        
+        <div class="card queue-container">
+            <h3>处理队列</h3>
+            <div id="queue"></div>
+        </div>
+        
+        <div class="card results" id="results"></div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const queue = [];
+        let isProcessing = false;
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        const queueElement = document.getElementById('queue');
+        const dropZone = document.getElementById('dropZone');
+
+        // 拖放处理
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+            
+            const files = Array.from(e.dataTransfer.files).filter(file => {
+                // 检查文件扩展名
+                const ext = file.name.toLowerCase().split('.').pop();
+                const validExtensions = ['mp3', 'wav', 'mp4', 'avi', 'mov', 'm4a', 'aac', 'ogg', 'webm', 'mkv'];
+                return validExtensions.includes(ext);
+            });
+
+            if (files.length === 0) {
+                alert('请选择有效的音频或视频文件');
+                return;
+            }
+            
+            addToQueue(files);
+        });
+
+        // 文件选择处理
+        document.getElementById('audioFile').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files).filter(file => {
+                const ext = file.name.toLowerCase().split('.').pop();
+                const validExtensions = ['mp3', 'wav', 'mp4', 'avi', 'mov', 'm4a', 'aac', 'ogg', 'webm', 'mkv'];
+                return validExtensions.includes(ext);
+            });
+
+            if (files.length === 0) {
+                alert('请选择有效的音频或视频文件');
+                return;
+            }
+
+            addToQueue(files);
+        });
+
+        function createQueueItem(file) {
+            const item = document.createElement('div');
+            item.className = 'queue-item';
+            item.innerHTML = `
+                <div class="file-name">${file.name}</div>
+                <div class="status-container">
+                    <div class="status">等待处理...</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+            `;
+            return item;
+        }
+
+        function updateQueueItemStatus(element, status, isError = false, txtPath = null) {
+            const statusContainer = element.querySelector('.status-container');
+            const statusDiv = element.querySelector('.status');
+            statusDiv.textContent = status;
+            
+            const oldLink = statusContainer.querySelector('.open-file');
+            if (oldLink) {
+                oldLink.remove();
+            }
+            
+            if (txtPath) {
+                const openLink = document.createElement('a');
+                openLink.className = 'open-file';
+                openLink.innerHTML = '📂 打开文件位置';
+                openLink.onclick = () => ipcRenderer.invoke('open-file', txtPath);
+                statusContainer.appendChild(openLink);
+            }
+            
+            element.className = `queue-item ${isError ? 'error' : ''} ${status === '转录完成' ? 'done' : ''}`;
+        }
+
+        function addToQueue(files) {
+            files.forEach(file => {
+                const queueItem = {
+                    file,
+                    element: createQueueItem(file)
+                };
+                queue.push(queueItem);
+                queueElement.appendChild(queueItem.element);
+            });
+            
+            processQueue();
+        }
+
+        async function processQueue() {
+            if (isProcessing || queue.length === 0) return;
+            
+            isProcessing = true;
+            const item = queue[0];
+            
+            try {
+                updateQueueItemStatus(item.element, '正在转录...');
+                const { txtPath } = await transcribeFile(item.file);
+                updateQueueItemStatus(item.element, '转录完成', false, txtPath);
+            } catch (error) {
+                console.error('转录错误:', error);
+                updateQueueItemStatus(item.element, `转录失败: ${error.message}`, true);
+            }
+            
+            queue.shift();
+            isProcessing = false;
+            processQueue();
+        }
+
+        async function transcribeFile(file) {
+            const resultDiv = document.createElement('div');
+            resultDiv.innerHTML = `<h3>${file.name}</h3>`;
+            results.insertBefore(resultDiv, results.firstChild);
+            
+            let segmentCount = 0;
+            
+            const transcriptionDiv = document.createElement('div');
+            resultDiv.appendChild(transcriptionDiv);
+
+            const handleProgress = (event, segment) => {
+                const div = document.createElement('div');
+                div.className = 'segment new';
+                div.innerHTML = `
+                    <span>[${segment.start.toFixed(2)}s -> ${segment.end.toFixed(2)}s]</span>
+                    <p>${segment.text}</p>
+                `;
+                transcriptionDiv.appendChild(div);
+                segmentCount++;
+                updateQueueItemStatus(item.element, `正在转录...${segmentCount}段`);
+                div.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            ipcRenderer.on('transcription-progress', handleProgress);
+
+            try {
+                const result = await ipcRenderer.invoke('transcribe-audio', file.path);
+                return result;
+            } finally {
+                ipcRenderer.removeListener('transcription-progress', handleProgress);
+            }
+        }
+    </script>
+</body>
+</html> 

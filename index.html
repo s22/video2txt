@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Transcription</title>
+</head>
+<body>
+    <input type="file" id="audioFile" accept="audio/*">
+    <button onclick="transcribe()">转录</button>
+    <div id="results"></div>
+
+    <script>
+        const { PythonShell } = require('python-shell');
+
+        async function transcribe() {
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            let options = {
+                mode: 'text',
+                pythonPath: 'python3',
+                scriptPath: __dirname,
+                args: [file.path]
+            };
+
+            try {
+                const results = await PythonShell.run('script.py', options);
+                const transcription = JSON.parse(results[0]);
+                
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = transcription.map(segment => 
+                    `<p>${segment.start.toFixed(2)}s - ${segment.end.toFixed(2)}s: ${segment.text}</p>`
+                ).join('');
+            } catch (error) {
+                console.error('转录错误:', error);
+            }
+        }
+    </script>
+</body>
+</html> 
