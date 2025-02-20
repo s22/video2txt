@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, shell } = require('electron')
 const path = require('path')
 const { PythonShell } = require('python-shell')
 const fs = require('fs')
+const os = require('os')
 
 let mainWindow
 
@@ -25,21 +26,26 @@ function createWindow() {
 
 // 获取Python路径
 function getPythonPath() {
-  if (app.isPackaged) {
-    // 根据平台选择正确的 Python 路径
-    if (process.platform === 'darwin') {  // macOS
-      return path.join(process.resourcesPath, 'python', 'venv', 'bin', 'python')
-    } else {  // Windows
-      return path.join(process.resourcesPath, 'python', 'venv', 'Scripts', 'python.exe')
-    }
-  } else {
-    // 开发环境使用系统 Python
-    if (process.platform === 'win32') {
-      return 'python/venv/Scripts/python.exe'
+  const getPackagedPath = () => {
+    const basePath = path.join(process.resourcesPath, 'app.asar.unpacked', 'python', 'venv')
+    if (process.platform === 'darwin') {
+      return path.join(basePath, 'bin', 'python')
     } else {
-      return 'python/venv/bin/python'
+      return path.join(basePath, 'Scripts', 'python.exe')
     }
   }
+
+  const getDevPath = () => {
+    const basePath = path.join(__dirname, '..', 'python', 'venv')
+    if (process.platform === 'win32') {
+      return path.join(basePath, 'Scripts', 'python.exe')
+    } else {
+      return path.join(basePath, 'bin', 'python')
+    }
+  }
+
+  const pythonPath = app.isPackaged ? getPackagedPath() : getDevPath()
+  return pythonPath.replace(/\\/g, '/') // 统一使用正斜杠
 }
 
 // 保存文本文件
@@ -59,21 +65,26 @@ async function saveTranscription(audioPath, segments) {
 // 处理音频转录
 ipcMain.handle('transcribe-audio', async (event, audioPath) => {
   return new Promise((resolve, reject) => {
+    const getScriptPath = () => {
+      const basePath = app.isPackaged 
+        ? path.join(process.resourcesPath, 'app.asar.unpacked', 'python')
+        : path.join(__dirname, '..', 'python')
+      return basePath.replace(/\\/g, '/')
+    }
+
     let options = {
       mode: 'text',
       pythonPath: getPythonPath(),
       pythonOptions: ['-u'],
-      scriptPath: app.isPackaged 
-        ? path.join(process.resourcesPath, 'python')
-        : path.join(__dirname, '..', 'python'),
-      args: [audioPath],
+      scriptPath: getScriptPath(),
+      args: [audioPath.replace(/\\/g, '/')], // 确保音频路径也使用正斜杠
       env: {
         ...process.env,
-        MODEL_ROOT: app.isPackaged 
-          ? path.join(process.resourcesPath, 'models')
-          : path.join(__dirname, '..', 'models')
+        MODEL_ROOT: path.join(os.homedir(), '.milochy', 'models').replace(/\\/g, '/')
       }
     }
+
+    console.log('Python options:', JSON.stringify(options, null, 2)) // 添加调试日志
 
     let allResults = [];
     const pyshell = new PythonShell('script.py', options);
