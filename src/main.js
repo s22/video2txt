@@ -28,8 +28,14 @@ function getPythonPath() {
     } else {  // Windows
       return path.join(process.resourcesPath, 'python', 'venv', 'Scripts', 'python.exe')
     }
+  } else {
+    // 开发环境使用系统 Python
+    if (process.platform === 'win32') {
+      return 'python/venv/Scripts/python.exe'
+    } else {
+      return 'python/venv/bin/python'
+    }
   }
-  return 'python' // 开发环境使用系统Python
 }
 
 // 保存文本文件

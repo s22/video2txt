@@ -19,9 +19,13 @@
     "productName": "Milochy视频文案提取",
     "extraResources": [
       {
-        "from": "python",
-        "to": "python",
-        "filter": ["**/*"]
+        "from": "python/venv",
+        "to": "python/venv",
+        "filter": [
+          "**/*",
+          "!**/__pycache__",
+          "!**/*.pyc"
+        ]
       },
       {
         "from": "models",
@@ -29,6 +33,11 @@
         "filter": ["**/*"]
       }
     ],
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "asar": false,
     "mac": {
       "category": "public.app-category.utilities",
       "target": ["dmg", "zip"],
