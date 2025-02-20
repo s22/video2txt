@@ -6,9 +6,9 @@ import sys
 from huggingface_hub import hf_hub_download
 
 def get_model_path():
-    # 获取项目根目录下的 models 文件夹
-    root_dir = Path(__file__).parent.parent
-    model_dir = root_dir / "models" / "medium"
+    # 获取用户目录下的模型文件夹
+    home = os.path.expanduser("~")
+    model_dir = os.path.join(home, ".milochy", "models", "medium")
     return str(model_dir)
 
 def ensure_model_downloaded():
