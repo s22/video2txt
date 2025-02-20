@@ -20,7 +20,7 @@
     "extraResources": [
       {
         "from": "python/venv",
-        "to": "python/venv",
+        "to": "app.asar.unpacked/python/venv",
         "filter": [
           "**/*",
           "!**/__pycache__",
@@ -29,7 +29,7 @@
       },
       {
         "from": "models",
-        "to": "models",
+        "to": "app.asar.unpacked/models",
         "filter": ["**/*"]
       }
     ],
@@ -37,7 +37,11 @@
       "src/**/*",
       "package.json"
     ],
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "python/venv/**/*",
+      "models/**/*"
+    ],
     "mac": {
       "category": "public.app-category.utilities",
       "target": ["dmg", "zip"],
