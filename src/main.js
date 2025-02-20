@@ -24,58 +24,44 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'))
 }
 
+const writeLog = (message) => {
+  const logPath = path.join(app.isPackaged ? process.resourcesPath : __dirname, 'debug.txt')
+  const timestamp = new Date().toISOString()
+  const logMessage = `${timestamp}: ${message}\n`
+  fs.appendFileSync(logPath, logMessage)
+}
+
 // 获取Python路径
 function getPythonPath() {
-  const getPackagedPath = () => {
-    // 在打包环境中，Python 应该在 resources 目录下
-    const basePath = path.join(process.resourcesPath, 'app.asar.unpacked', 'python', 'venv')
-    const pythonPath = process.platform === 'win32'
-      ? path.join(basePath, 'Scripts', 'python.exe')
-      : path.join(basePath, 'bin', 'python')
+  if (app.isPackaged) {
+    const pythonPath = path.join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'python',
+      'venv',
+      process.platform === 'win32' ? 'Scripts' : 'bin',
+      process.platform === 'win32' ? 'python.exe' : 'python'
+    )
     
-    // 检查文件是否存在并输出详细信息
-    console.log('Checking Python path:', pythonPath)
-    console.log('Process resources path:', process.resourcesPath)
-    console.log('Base path:', basePath)
-    console.log('Path exists:', fs.existsSync(pythonPath))
-    
-    try {
-      // 尝试获取目录内容
-      if (fs.existsSync(basePath)) {
-        console.log('Directory contents:', fs.readdirSync(basePath))
-        if (process.platform === 'win32' && fs.existsSync(path.join(basePath, 'Scripts'))) {
-          console.log('Scripts directory contents:', fs.readdirSync(path.join(basePath, 'Scripts')))
-        }
-      }
-    } catch (err) {
-      console.error('Error reading directory:', err)
-    }
+    writeLog(`Checking Python path: ${pythonPath}`)
+    writeLog(`Process resources path: ${process.resourcesPath}`)
+    writeLog(`Path exists: ${fs.existsSync(pythonPath)}`)
 
     if (!fs.existsSync(pythonPath)) {
-      console.error('Python path not found:', pythonPath)
+      writeLog(`Error: Python not found at ${pythonPath}`)
       throw new Error(`Python not found at ${pythonPath}`)
     }
-
-    // 确保返回的路径不包含特殊字符
-    return pythonPath.split('(')[0].trim()  // 移除括号及其后面的内容
-  }
-
-  const getDevPath = () => {
-    const basePath = path.join(__dirname, '..', 'python', 'venv')
-    const pythonPath = process.platform === 'win32'
-      ? path.join(basePath, 'Scripts', 'python.exe')
-      : path.join(basePath, 'bin', 'python')
+    return pythonPath
+  } else {
+    const pythonPath = path.join(
+      'python',
+      'venv',
+      process.platform === 'win32' ? 'Scripts' : 'bin',
+      process.platform === 'win32' ? 'python.exe' : 'python'
+    )
+    writeLog(`Development Python path: ${pythonPath}`)
     return pythonPath
   }
-
-  // 获取并规范化路径，确保没有特殊字符
-  const pythonPath = (app.isPackaged ? getPackagedPath() : getDevPath())
-    .replace(/\\/g, '/')
-    .replace(/\.\.\./g, '')  // 移除省略号
-    .replace(/\([^)]*\)/g, '')  // 移除括号及其内容
-
-  console.log('Final Python path:', pythonPath)
-  return pythonPath
 }
 
 // 保存文本文件
@@ -99,13 +85,15 @@ ipcMain.handle('transcribe-audio', async (event, audioPath) => {
       const scriptPath = app.isPackaged 
         ? path.join(process.resourcesPath, 'app.asar.unpacked', 'python', 'script.py')
         : path.join(__dirname, '..', 'python', 'script.py')
+
+      writeLog(`Checking script path: ${scriptPath}`)
+      writeLog(`Script exists: ${fs.existsSync(scriptPath)}`)
       
-      // 检查脚本是否存在
       if (!fs.existsSync(scriptPath)) {
-        console.error('Script not found:', scriptPath)
+        writeLog(`Error: Script not found at ${scriptPath}`)
         throw new Error(`Script not found at ${scriptPath}`)
       }
-      return scriptPath.replace(/\\/g, '/')
+      return scriptPath
     }
 
     let options = {
@@ -113,19 +101,20 @@ ipcMain.handle('transcribe-audio', async (event, audioPath) => {
       pythonPath: getPythonPath(),
       pythonOptions: ['-u'],
       scriptPath: path.dirname(getScriptPath()),
-      args: [audioPath.replace(/\\/g, '/')],
+      args: [audioPath],
       env: {
         ...process.env,
-        MODEL_ROOT: path.join(os.homedir(), '.milochy', 'models').replace(/\\/g, '/')
+        MODEL_ROOT: path.join(os.homedir(), '.milochy', 'models')
       }
     }
 
-    console.log('Python options:', JSON.stringify(options, null, 2))
+    writeLog(`Python options: ${JSON.stringify(options, null, 2)}`)
 
     let allResults = [];
     const pyshell = new PythonShell('script.py', options);
 
     pyshell.on('message', async function (message) {
+      writeLog(`Python message: ${message}`)
       if (message.startsWith('SEGMENT:')) {
         const segmentData = JSON.parse(message.slice(8));
         allResults.push(segmentData);
@@ -143,7 +132,7 @@ ipcMain.handle('transcribe-audio', async (event, audioPath) => {
 
     pyshell.end(function (err) {
       if (err) {
-        console.error('Transcription error:', err);
+        writeLog(`Transcription error: ${err}`)
         reject(err);
       }
     });
